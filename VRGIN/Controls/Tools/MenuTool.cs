@@ -99,51 +99,72 @@ namespace VRGIN.Controls.Tools
             base.OnEnable();
             if ((bool)Gui) Gui.gameObject.SetActive(true);
         }
-
+        
         protected override void OnUpdate()
         {
             base.OnUpdate();
-            var controller = Controller;
-            if (controller.GetPressDown(12884901888uL))
+
+            var device = this.Controller;
+
+            if (device.GetPressDown(ButtonMask.Touchpad | ButtonMask.Trigger))
             {
                 VR.Input.Mouse.LeftButtonDown();
                 pressDownTime = Time.unscaledTime;
             }
 
-            if (controller.GetPressUp(4uL))
+            if (device.GetPressUp(ButtonMask.Grip))
             {
-                if ((bool)Gui)
+                if (Gui)
+                {
                     AbandonGUI();
+                }
                 else
-                    TakeGUI(GUIQuadRegistry.Quads.FirstOrDefault((GUIQuad q) => !q.IsOwned));
+                {
+                    TakeGUI(GUIQuadRegistry.Quads.FirstOrDefault(q => !q.IsOwned));
+                }
             }
 
-            if (controller.GetTouchDown(EVRButtonId.k_EButton_Axis0))
+            if (device.GetTouchDown(ButtonMask.Touchpad))
             {
-                touchDownPosition = controller.GetAxis(EVRButtonId.k_EButton_Axis0);
+                touchDownPosition = device.GetAxis();
                 touchDownMousePosition = MouseOperations.GetClientCursorPosition();
             }
-
-            if (controller.GetTouch(EVRButtonId.k_EButton_Axis0) && Time.unscaledTime - pressDownTime > 0.3f)
+            if (device.GetTouch(ButtonMask.Touchpad) && (Time.unscaledTime - pressDownTime) > 0.3f)
             {
-                var axis = controller.GetAxis(EVRButtonId.k_EButton_Axis0);
-                var vector = axis - (VR.HMD == HMDType.Oculus ? Vector2.zero : touchDownPosition);
-                var num = VR.HMD == HMDType.Oculus ? Time.unscaledDeltaTime * 5f : 1f;
-                _DeltaX += (double)(vector.x * (float)VRGUI.Width) * 0.1 * (double)num;
-                _DeltaY += (double)((0f - vector.y) * (float)VRGUI.Height) * 0.2 * (double)num;
-                var num2 = (int)(_DeltaX > 0.0 ? Math.Floor(_DeltaX) : Math.Ceiling(_DeltaX));
-                var num3 = (int)(_DeltaY > 0.0 ? Math.Floor(_DeltaY) : Math.Ceiling(_DeltaY));
-                _DeltaX -= num2;
-                _DeltaY -= num3;
-                VR.Input.Mouse.MoveMouseBy(num2, num3);
-                touchDownPosition = axis;
+                var pos = device.GetAxis();
+                var diff = pos - (VR.HMD == HMDType.Oculus ? Vector2.zero : touchDownPosition);
+                var factor = VR.HMD == HMDType.Oculus ? Time.unscaledDeltaTime * 5 : 1f;
+                // We can only move by integral number of pixels, so accumulate them until we have an integral value
+                _DeltaX += (diff.x * VRGUI.Width * 0.1 * factor);
+                _DeltaY += (-diff.y * VRGUI.Height * 0.2 * factor);
+                
+                int deltaX = (int)(_DeltaX > 0 ? Math.Floor(_DeltaX) : Math.Ceiling(_DeltaX));
+                int deltaY = (int)(_DeltaY > 0 ? Math.Floor(_DeltaY) : Math.Ceiling(_DeltaY));
+
+                _DeltaX -= deltaX;
+                _DeltaY -= deltaY;
+
+                MoveMouseWithinWindow(deltaX, deltaY);
+                touchDownPosition = pos;
             }
 
-            if (controller.GetPressUp(12884901888uL))
+            if (device.GetPressUp(ButtonMask.Touchpad | ButtonMask.Trigger))
             {
                 VR.Input.Mouse.LeftButtonUp();
-                pressDownTime = 0f;
+                pressDownTime = 0;
             }
+        }
+
+        private static void MoveMouseWithinWindow(int deltaX, int deltaY)
+        {
+            var clientRect = WindowManager.GetClientRect();
+            var virtualScreenRect = WindowManager.GetVirtualScreenRect();
+            var current = MouseOperations.GetCursorPosition();
+            var x = Mathf.Clamp(current.X + deltaX, clientRect.Left, clientRect.Right - 1);
+            var y = Mathf.Clamp(current.Y + deltaY, clientRect.Top, clientRect.Bottom - 1);
+            VR.Input.Mouse.MoveMouseToPositionOnVirtualDesktop(
+                (x - virtualScreenRect.Left) * 65535.0 / (virtualScreenRect.Right - virtualScreenRect.Left),
+                (y - virtualScreenRect.Top) * 65535.0 / (virtualScreenRect.Bottom - virtualScreenRect.Top));
         }
 
         public override List<HelpText> GetHelpTexts()

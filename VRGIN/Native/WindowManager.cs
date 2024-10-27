@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -6,66 +6,75 @@ using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 using VRGIN.Core;
-using Debug = System.Diagnostics.Debug;
-using IntPtr = System.IntPtr;
+using static VRGIN.Native.WindowsInterop;
 
 namespace VRGIN.Native
 {
     public class WindowManager
     {
-        private static IntPtr? _Handle;
+        private static List<IntPtr> GetRootWindowsOfProcess(int pid)
+        {
+            List<IntPtr> rootWindows = GetChildWindows(IntPtr.Zero);
+            List<IntPtr> dsProcRootWindows = new List<IntPtr>();
+            foreach (IntPtr hWnd in rootWindows)
+            {
+                uint lpdwProcessId;
+                WindowsInterop.GetWindowThreadProcessId(hWnd, out lpdwProcessId);
+                if (lpdwProcessId == pid)
+                    dsProcRootWindows.Add(hWnd);
+            }
+            return dsProcRootWindows;
+        }
 
+        private static List<IntPtr> GetChildWindows(IntPtr parent)
+        {
+            List<IntPtr> result = new List<IntPtr>();
+            GCHandle listHandle = GCHandle.Alloc(result);
+            try
+            {
+                WindowsInterop.Win32Callback childProc = new WindowsInterop.Win32Callback(EnumWindow);
+                WindowsInterop.EnumChildWindows(parent, childProc, GCHandle.ToIntPtr(listHandle));
+            }
+            finally
+            {
+                if (listHandle.IsAllocated)
+                    listHandle.Free();
+            }
+            return result;
+        }
+
+        private static bool EnumWindow(IntPtr handle, IntPtr pointer)
+        {
+            GCHandle gch = GCHandle.FromIntPtr(pointer);
+            List<IntPtr> list = gch.Target as List<IntPtr>;
+            if (list == null)
+            {
+                throw new InvalidCastException("GCHandle Target could not be cast as List<IntPtr>");
+            }
+            list.Add(handle);
+            //  You can modify this to check to see if you want to cancel the operation, then return a null here
+            return true;
+        }
+
+        private static IntPtr? _Handle;
         public static IntPtr Handle
         {
             get
             {
-                if (!_Handle.HasValue)
+                if(_Handle == null)
                 {
-                    var currentProcess = Process.GetCurrentProcess();
-                    var rootWindowsOfProcess = GetRootWindowsOfProcess(currentProcess.Id);
-
-                    if (rootWindowsOfProcess.Count == 0)
+                    var handles = GetRootWindowsOfProcess(Process.GetCurrentProcess().Id);
+                    double best = double.NegativeInfinity;
+                    foreach (var handle in handles)
                     {
-                        // Looks like on some Linux systems no windows are reported
-                        // These workarounds are far from perfect but it's better than not working at all
-                        try
+                        double score = MainWindowScore(handle);
+                        if (score >= best)
                         {
-                            _Handle = currentProcess.MainWindowHandle;
-                            VRLog.Warn("Assuming MainWindowHandle is the main window. Cursor and GUI might have issues!");
-                        }
-                        catch (Exception e)
-                        {
-                            VRLog.Error(e);
-                        }
-
-                        if (!_Handle.HasValue || _Handle.Value == IntPtr.Zero)
-                        {
-                            VRLog.Warn("No window handles found! Cursor and GUI are going to have issues!");
-                            _Handle = IntPtr.Zero;
-                        }
-                    }
-                    else
-                    {
-                        var best = double.NegativeInfinity;
-                        foreach (var handle in rootWindowsOfProcess)
-                        {
-                            var score = MainWindowScore(handle);
-                            if (score.HasValue && score.Value >= best)
-                            {
-                                best = score.Value;
-                                _Handle = handle;
-                            }
-                        }
-
-                        if (!_Handle.HasValue)
-                        {
-                            VRLog.Warn("Fall back to first handle!");
-                            _Handle = rootWindowsOfProcess.First();
+                            best = score;
+                            _Handle = handle;
                         }
                     }
                 }
-
-                Debug.Assert(_Handle != null, "_Handle != null");
                 return _Handle.Value;
             }
         }
@@ -77,12 +86,11 @@ namespace VRGIN.Native
         /// </summary>
         /// <param name="handle"></param>
         /// <returns></returns>
-        private static double? MainWindowScore(IntPtr handle)
+        private static double MainWindowScore(IntPtr handle)
         {
-            WindowsInterop.RECT rect = new WindowsInterop.RECT();
-            if (!WindowsInterop.GetClientRect(handle, ref rect))
-                return null;
             double score = 0;
+            RECT rect = new RECT();
+            WindowsInterop.GetClientRect(handle, ref rect);
             int width = rect.Right - rect.Left;
             int height = rect.Bottom - rect.Top;
             if (width == Screen.width && height == Screen.height)
@@ -90,64 +98,57 @@ namespace VRGIN.Native
                 score += 1;
             }
             score -= Math.Abs(Math.Log(Screen.width + 1) - Math.Log(width + 1)) +
-                     Math.Abs(Math.Log(Screen.height + 1) - Math.Log(height + 1));
+                Math.Abs(Math.Log(Screen.height + 1) - Math.Log(height + 1));
             if (GetWindowText(handle).Contains("BepInEx"))
             {
                 // Likely a BepInEx console.
-                score -= 1;
+                score -= 0.3;
             }
             return score;
         }
-
-        private static List<IntPtr> GetRootWindowsOfProcess(int process)
-        {
-            var apRet = new List<IntPtr>();
-            IntPtr pLast = IntPtr.Zero;
-            do {
-                pLast = WindowsInterop.FindWindowEx(IntPtr.Zero, pLast, null, null);
-                WindowsInterop.GetWindowThreadProcessId(pLast, out uint iProcess_);
-                if (iProcess_ == process) apRet.Add(pLast);
-            } while(pLast != IntPtr.Zero);
-            return apRet;
-        }
-
+        
         public static string GetWindowText(IntPtr hWnd)
         {
-            var windowTextLength = WindowsInterop.GetWindowTextLength(hWnd);
-            if (windowTextLength == 0) return string.Empty;
-            var stringBuilder = new StringBuilder(windowTextLength + 1);
-            WindowsInterop.GetWindowText(hWnd, stringBuilder, stringBuilder.Capacity);
-            return stringBuilder.ToString();
+            // Allocate correct string length first
+            int length = WindowsInterop.GetWindowTextLength(hWnd);
+            StringBuilder sb = new StringBuilder(length + 1);
+            WindowsInterop.GetWindowText(hWnd, sb, sb.Capacity);
+            return sb.ToString();
         }
-
         public static void ConfineCursor()
         {
-            var rcClip = GetClientRect();
-            WindowsInterop.ClipCursor(ref rcClip);
+            var clientRect = GetClientRect();
+            ClipCursor(ref clientRect);
         }
 
-        public static WindowsInterop.RECT GetClientRect()
+        public static RECT GetClientRect()
         {
-            var handle = Handle;
-            if (handle == IntPtr.Zero)
-                return new WindowsInterop.RECT(0, 0, Screen.width, Screen.height);
+            RECT clientRect = new RECT();
+            WindowsInterop.GetClientRect(Handle, ref clientRect);
 
-            var lpRect = default(WindowsInterop.RECT);
-            WindowsInterop.GetClientRect(handle, ref lpRect);
-            var lpPoint = default(WindowsInterop.POINT);
-            WindowsInterop.ClientToScreen(handle, ref lpPoint);
-            lpRect.Left = lpPoint.X;
-            lpRect.Top = lpPoint.Y;
-            lpRect.Right += lpPoint.X;
-            lpRect.Bottom += lpPoint.Y;
-            return lpRect;
+            POINT topLeft = new POINT();
+            ClientToScreen(Handle, ref topLeft);
+
+            clientRect.Left = topLeft.X;
+            clientRect.Top = topLeft.Y;
+            clientRect.Right += topLeft.X;
+            clientRect.Bottom += topLeft.Y;
+
+            return clientRect;
+        }
+
+        public static RECT GetVirtualScreenRect()
+        {
+            int left = WindowsInterop.GetSystemMetrics(WindowsInterop.SystemMetric.SM_XVIRTUALSCREEN);
+            int width = WindowsInterop.GetSystemMetrics(WindowsInterop.SystemMetric.SM_CXVIRTUALSCREEN);
+            int top = WindowsInterop.GetSystemMetrics(WindowsInterop.SystemMetric.SM_YVIRTUALSCREEN);
+            int height = WindowsInterop.GetSystemMetrics(WindowsInterop.SystemMetric.SM_CYVIRTUALSCREEN);
+            return new RECT(left, top, left + width, top + height);
         }
 
         public static void Activate()
         {
-            var handle = Handle;
-            if (handle != IntPtr.Zero)
-                WindowsInterop.SetForegroundWindow(handle);
+            SetForegroundWindow(Handle);
         }
     }
 }

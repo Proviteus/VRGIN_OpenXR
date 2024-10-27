@@ -40,7 +40,7 @@ namespace VRGIN.Core
 
         public ControlMode Mode { get; private set; }
 
-        public InputSimulator Input { get; internal set; }
+        public IInputSimulator Input { get; set; }
 
         public event EventHandler<ModeInitializedEventArgs> ModeInitialized = delegate { };
 
@@ -138,6 +138,8 @@ namespace VRGIN.Core
                         VR.Camera.Copy(camera, false, true);
                         VR.GUI.AddCamera(camera);
                         break;
+                    case CameraJudgement.Ignore:
+                        break;
                 }
             }
         }
@@ -150,6 +152,11 @@ namespace VRGIN.Core
         private void OnControllersCreated(object sender, EventArgs e)
         {
             ModeInitialized(this, new ModeInitializedEventArgs(Mode));
+        }
+
+        private void OnDisable()
+        {
+            VR.Quitting = true;
         }
 
         public void EnableEffects()

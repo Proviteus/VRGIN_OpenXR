@@ -23,6 +23,9 @@ namespace VRGIN.Controls
 
             public bool IsValid { get; private set; }
 
+            public bool KeepsTool { get; private set; }
+
+
             private Lock()
             {
                 IsValid = false;
@@ -57,35 +60,36 @@ namespace VRGIN.Controls
             }
         }
 
-        private bool _Started;
+        //private bool _Started;
+
 
         public SteamVR_Behaviour_Pose Tracking;
 
-        private DeviceLegacyAdapter _Input;
+        protected DeviceLegacyAdapter _Input;
 
-        protected BoxCollider Collider;
+        //protected BoxCollider Collider;
 
-        private float? appButtonPressTime;
+        //private float? appButtonPressTime;
 
         public List<Tool> Tools = new List<Tool>();
 
         public Controller Other;
 
-        private const float APP_BUTTON_TIME_THRESHOLD = 0.5f;
+       // private const float APP_BUTTON_TIME_THRESHOLD = 0.5f;
 
-        private bool helpShown;
+        //private bool helpShown;
 
-        private List<HelpText> helpTexts;
+        //private List<HelpText> helpTexts;
 
-        private Canvas _Canvas;
+        //private Canvas _Canvas;
 
-        private Lock _Lock = Lock.Invalid;
+        protected Lock _Lock = Lock.Invalid;
 
-        private GameObject _AlphaConcealer;
+        //private GameObject _AlphaConcealer;
 
-        public SteamVR_RenderModel Model { get; private set; }
+        public SteamVR_RenderModel Model { get; protected set; }
 
-        public RumbleManager Rumble { get; private set; }
+        public RumbleManager Rumble { get; protected set; }
 
         public virtual int ToolIndex { get; set; }
 
@@ -100,19 +104,17 @@ namespace VRGIN.Controls
 
         public virtual IList<Type> ToolTypes => new List<Type>();
 
-        public bool ToolEnabled
+        public virtual bool ToolEnabled
         {
             get
             {
-                if (ActiveTool != null) return ActiveTool.enabled;
-                return false;
+                return ActiveTool != null && ActiveTool.enabled;
             }
             set
             {
                 if (ActiveTool != null)
                 {
                     ActiveTool.enabled = value;
-                    if (!value) HideHelp();
                 }
             }
         }
@@ -121,8 +123,7 @@ namespace VRGIN.Controls
         {
             get
             {
-                if ((bool)Tracking) return Tracking.isValid;
-                return false;
+                return Tracking && Tracking.isValid;
             }
         }
 
@@ -132,7 +133,10 @@ namespace VRGIN.Controls
         {
             get
             {
-                if ((bool)Tracking) return Tracking.inputSource;
+                if ((bool)Tracking)
+                {
+                    return Tracking.inputSource;
+                }
                 throw new NullReferenceException("Tracking is null");
             }
             set
@@ -155,32 +159,37 @@ namespace VRGIN.Controls
                 lockObj = new Lock(this);
                 return true;
             }
-
             return false;
         }
 
         public Lock AcquireFocus()
         {
-            if (TryAcquireFocus(out var lockObj)) return lockObj;
+            if (TryAcquireFocus(out var lockObj))
+            {
+                return lockObj;
+            }
             return Lock.Invalid;
         }
 
         public bool CanAcquireFocus()
         {
-            if (_Lock != null) return !_Lock.IsValid;
+            if (_Lock != null)
+            {
+                return !_Lock.IsValid;
+            }
             return true;
         }
 
         protected virtual void OnLock()
         {
             ToolEnabled = false;
-            _AlphaConcealer.SetActive(false);
+                //_AlphaConcealer.SetActive(false);
         }
 
         protected virtual void OnUnlock()
         {
             ToolEnabled = true;
-            _AlphaConcealer.SetActive(true);
+            //_AlphaConcealer.SetActive(true);
         }
 
         protected virtual void OnDestroy()
@@ -189,31 +198,28 @@ namespace VRGIN.Controls
             SteamVR_Events.RenderModelLoaded.Remove(_OnRenderModelLoaded);
         }
 
-        protected void SetUp()
+        protected virtual void SetUp()
         {
             SteamVR_Events.RenderModelLoaded.Listen(_OnRenderModelLoaded);
+
             Tracking = gameObject.AddComponent<SteamVR_Behaviour_Pose>();
             _Input = new DeviceLegacyAdapter(Tracking);
+
             Rumble = gameObject.AddComponent<RumbleManager>();
             gameObject.AddComponent<BodyRumbleHandler>();
-            gameObject.AddComponent<MenuHandler>();
+            gameObject.AddComponent<MenuHandlerGame>();
+
             Model = new GameObject("Model").AddComponent<SteamVR_RenderModel>();
             Model.shader = VRManager.Instance.Context.Materials.StandardShader;
             if (!Model.shader) VRLog.Warn("Shader not found");
+
             Model.transform.SetParent(transform, false);
             Model.transform.localPosition = Vector3.zero;
             Model.transform.localRotation = Quaternion.identity;
             Model.gameObject.layer = 0;
-            BuildCanvas();
-            Collider = new GameObject("Collider").AddComponent<BoxCollider>();
-            Collider.transform.SetParent(transform, false);
-            Collider.center = new Vector3(0f, -0.02f, -0.06f);
-            Collider.size = new Vector3(0.05f, 0.05f, 0.2f);
-            Collider.isTrigger = true;
-            gameObject.AddComponent<Rigidbody>().isKinematic = true;
         }
 
-        private void _OnRenderModelLoaded(SteamVR_RenderModel model, bool isLoaded)
+        protected void _OnRenderModelLoaded(SteamVR_RenderModel model, bool isLoaded)
         {
             try
             {
@@ -221,7 +227,7 @@ namespace VRGIN.Controls
                 {
                     VRLog.Info("Render model loaded! rendeModelName: '" + model.renderModelName + "'");
                     gameObject.SendMessageToAll("OnRenderModelLoaded");
-                    OnRenderModelLoaded();
+                    //OnRenderModelLoaded();
                 }
             }
             catch (Exception obj)
@@ -230,12 +236,12 @@ namespace VRGIN.Controls
             }
         }
 
-        private void OnRenderModelLoaded()
-        {
-            var componentsInChildren = Model.GetComponentsInChildren<Renderer>(true);
-            foreach (var renderer in componentsInChildren)
-                VRLog.Debug($"Name: {renderer.gameObject.name}, Layer: {LayerMask.LayerToName(renderer.gameObject.layer)}, Visible: {renderer.isVisible}, Shader: {renderer.sharedMaterial.shader}");
-        }
+        //private void OnRenderModelLoaded()
+        //{
+        //    //var componentsInChildren = Model.GetComponentsInChildren<Renderer>(true);
+        //    //foreach (var renderer in componentsInChildren)
+        //    //    VRLog.Debug($"Name: {renderer.gameObject.name}, Layer: {LayerMask.LayerToName(renderer.gameObject.layer)}, Visible: {renderer.isVisible}, Shader: {renderer.sharedMaterial.shader}");
+        //}
 
         protected override void OnAwake()
         {
@@ -243,13 +249,14 @@ namespace VRGIN.Controls
             SetUp();
         }
 
-        public void AddTool(Type toolType)
+        public virtual void AddTool(Type toolType)
         {
             if (toolType.IsSubclassOf(typeof(Tool)) && !Tools.Any((Tool tool) => toolType.IsAssignableFrom(tool.GetType())))
             {
                 var tool2 = gameObject.AddComponent(toolType) as Tool;
                 Tools.Add(tool2);
-                CreateToolCanvas(tool2);
+                //CreateToolCanvas(tool2);
+
                 tool2.enabled = false;
             }
         }
@@ -275,38 +282,40 @@ namespace VRGIN.Controls
                 if (tool.enabled) tool.enabled = false;
                 tool.enabled = true;
             }
-
-            _Started = true;
         }
-
         protected override void OnUpdate()
         {
-            base.OnUpdate();
-            if (!Tracking) return;
-            _ = InputSources;
-            if (_Lock != null && _Lock.IsInvalidating) TryReleaseLock();
-            if (_Lock != null && _Lock.IsValid) return;
-            if (Input.GetPressDown(EVRButtonId.k_EButton_ApplicationMenu)) appButtonPressTime = Time.unscaledTime;
-            if (Input.GetPress(EVRButtonId.k_EButton_ApplicationMenu) && Time.unscaledTime - appButtonPressTime > 0.5f)
+            // An option to disable controller ? pretty sure it doesn't stop or maybe takes awhile.
+            //if (!Tracking) return;
+            //_ = InputSources;
+            if (_Lock != null && _Lock.IsInvalidating)
             {
-                ShowHelp();
-                appButtonPressTime = null;
+                TryReleaseLock();
             }
+            //if (_Lock != null && _Lock.IsValid) return;
+            //if (Input.GetPressDown(EVRButtonId.k_EButton_ApplicationMenu)) appButtonPressTime = Time.unscaledTime;
+            //if (Input.GetPress(EVRButtonId.k_EButton_ApplicationMenu) && Time.unscaledTime - appButtonPressTime > 0.5f)
+            //{
+            //    //ShowHelp();
+            //    appButtonPressTime = null;
+            //}
+            //if (!Input.GetPressUp(EVRButtonId.k_EButton_ApplicationMenu)) return;
+            //if (helpShown)
+            //{
+            //    Model.gameObject.SetActive(true);
+            //   //HideHelp();
+            //}
+            //else
+            //{
+            //    if ((bool)ActiveTool) ActiveTool.enabled = false;
+            //    ToolIndex = (ToolIndex + 1) % Tools.Count;
+            //    if ((bool)ActiveTool) ActiveTool.enabled = true;
+            //}
 
-            if (!Input.GetPressUp(EVRButtonId.k_EButton_ApplicationMenu)) return;
-            if (helpShown)
-                HideHelp();
-            else
-            {
-                if ((bool)ActiveTool) ActiveTool.enabled = false;
-                ToolIndex = (ToolIndex + 1) % Tools.Count;
-                if ((bool)ActiveTool) ActiveTool.enabled = true;
-            }
-
-            appButtonPressTime = null;
+            //appButtonPressTime = null;
         }
 
-        private void TryReleaseLock()
+        protected void TryReleaseLock()
         {
             var input = Input;
             foreach (var item in Enum.GetValues(typeof(EVRButtonId)).OfType<EVRButtonId>())
@@ -327,56 +336,66 @@ namespace VRGIN.Controls
             Rumble.StopRumble(session);
         }
 
-        private void HideHelp()
-        {
-            if (helpShown)
-            {
-                helpTexts.ForEach(delegate(HelpText h) { Destroy(h.gameObject); });
-                helpShown = false;
-            }
-        }
+        //private void HideHelp()
+        //{
+        //    if (helpShown)
+        //    {
+        //        helpTexts.ForEach(delegate(HelpText h) { Destroy(h.gameObject); });
+        //        helpShown = false;
+        //    }
+        //}
 
-        private void ShowHelp()
-        {
-            if (ActiveTool != null)
-            {
-                helpTexts = ActiveTool.GetHelpTexts();
-                helpShown = true;
-            }
-        }
+        //private void ShowHelp()
+        //{
+        //    if (ActiveTool != null)
+        //    {
+        //        helpTexts = ActiveTool.GetHelpTexts();
+        //        helpShown = true;
+        //    }
+        //}
 
-        private void BuildCanvas()
-        {
-            var canvas = _Canvas = new GameObject("ToolIconCanvas").AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
-            canvas.transform.SetParent(transform, false);
-            canvas.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 950f);
-            canvas.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 950f);
-            canvas.transform.localPosition = new Vector3(0f, -0.02725995f, 0.0279f);
-            canvas.transform.localRotation = Quaternion.Euler(30f, 180f, 180f);
-            canvas.transform.localScale = new Vector3(4.930151E-05f, 4.930148E-05f, 0f);
-            canvas.gameObject.layer = 0;
-            _AlphaConcealer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            _AlphaConcealer.transform.SetParent(transform, false);
-            _AlphaConcealer.transform.localScale = new Vector3(0.05f, 0.0001f, 0.05f);
-            _AlphaConcealer.transform.localPosition = new Vector3(0, -0.0303f, 0.0142f);
-            _AlphaConcealer.transform.localRotation = Quaternion.Euler(60, 0, 0);
-            _AlphaConcealer.GetComponent<Collider>().enabled = false;
-        }
+        //private void BuildCanvas()
+        //{
+        //    var canvas = _Canvas = new GameObject("ToolIconCanvas").AddComponent<Canvas>();
+        //    canvas.renderMode = RenderMode.WorldSpace;
+        //    canvas.transform.SetParent(transform, false);
 
-        private void CreateToolCanvas(Tool tool)
-        {
-            var image = new GameObject("ToolCanvas").AddComponent<Image>();
-            image.transform.SetParent(_Canvas.transform, false);
-            var image2 = tool.Image;
-            image.sprite = Sprite.Create(image2, new Rect(0f, 0f, image2.width, image2.height), new Vector2(0.5f, 0.5f));
-            image.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 0f);
-            image.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
-            image.color = Color.cyan;
-            tool.Icon = image.gameObject;
-            tool.Icon.SetActive(false);
-            tool.Icon.layer = 0;
-        }
+        //    canvas.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 950f);
+        //    canvas.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 950f);
+
+
+        //    // Pico 4 setup.
+        //    canvas.transform.localPosition = new Vector3(0f, 0f, -0.025f);//(0f, -0.02f, -0.02f);//Vector3(0, -0.02725995f, 0.0279f);
+        //    canvas.transform.localRotation = Quaternion.Euler(120f, 0, 0); ;//Quaternion.Euler(30, 180, 180);
+        //    canvas.transform.localScale = new Vector3(0.00002f, 0.00002f, 0);  //(4.930151e-05f, 4.930148e-05f, 0);
+
+        //    // Original
+        //    //canvas.transform.localPosition = new Vector3(0f, -0.02725995f, 0.0279f);
+        //    //canvas.transform.localRotation = Quaternion.Euler(30f, 180f, 180f);
+        //    //canvas.transform.localScale = new Vector3(4.930151E-05f, 4.930148E-05f, 0f);
+        //    //_AlphaConcealer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        //    //_AlphaConcealer.transform.SetParent(transform, false);
+        //    //_AlphaConcealer.transform.localScale = new Vector3(0.05f, 0.0001f, 0.05f);
+        //    //_AlphaConcealer.transform.localPosition = new Vector3(0, -0.0303f, 0.0142f);
+        //    //_AlphaConcealer.transform.localRotation = Quaternion.Euler(60, 0, 0);
+        //    //_AlphaConcealer.GetComponent<Collider>().enabled = false;
+
+        //    canvas.gameObject.layer = 0;
+        //}
+
+        //private void CreateToolCanvas(Tool tool)
+        //{
+        //    var image = new GameObject("ToolCanvas").AddComponent<Image>();
+        //    image.transform.SetParent(_Canvas.transform, false);
+        //    var image2 = tool.Image;
+        //    image.sprite = Sprite.Create(image2, new Rect(0f, 0f, image2.width, image2.height), new Vector2(0.5f, 0.5f));
+        //    image.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 0f);
+        //    image.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
+        //    image.color = Color.cyan;
+        //    tool.Icon = image.gameObject;
+        //    tool.Icon.SetActive(false);
+        //    tool.Icon.layer = 0;
+        //}
 
         public Transform FindAttachPosition(params string[] names)
         {

@@ -99,7 +99,7 @@ namespace VRGIN.Controls.Tools
             base.OnEnable();
             if ((bool)Gui) Gui.gameObject.SetActive(true);
         }
-        
+
         protected override void OnUpdate()
         {
             base.OnUpdate();
@@ -137,7 +137,7 @@ namespace VRGIN.Controls.Tools
                 // We can only move by integral number of pixels, so accumulate them until we have an integral value
                 _DeltaX += (diff.x * VRGUI.Width * 0.1 * factor);
                 _DeltaY += (-diff.y * VRGUI.Height * 0.2 * factor);
-                
+
                 int deltaX = (int)(_DeltaX > 0 ? Math.Floor(_DeltaX) : Math.Ceiling(_DeltaX));
                 int deltaY = (int)(_DeltaY > 0 ? Math.Floor(_DeltaY) : Math.Ceiling(_DeltaY));
 
@@ -154,7 +154,6 @@ namespace VRGIN.Controls.Tools
                 pressDownTime = 0;
             }
         }
-
         private static void MoveMouseWithinWindow(int deltaX, int deltaY)
         {
             var clientRect = WindowManager.GetClientRect();

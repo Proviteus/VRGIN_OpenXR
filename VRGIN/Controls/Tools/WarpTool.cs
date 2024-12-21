@@ -219,6 +219,7 @@ namespace VRGIN.Controls.Tools
             }
         }
 
+
         private void HandleRotation()
         {
             if (Showing)
@@ -241,7 +242,6 @@ namespace VRGIN.Controls.Tools
                 _ScaleInitialized = true;
             }
         }
-
         private void InitializeRotationIfNeeded()
         {
             if (!_ScaleInitialized && !_RotationInitialized)
@@ -325,12 +325,10 @@ namespace VRGIN.Controls.Tools
             _PrevControllerRot = transform.rotation;
             CheckRotationalPress();
         }
-
         private float NormalizeAngle(float angle)
         {
             return angle % 360f;
         }
-
         private void DetectCircle()
         {
             float? num = null;

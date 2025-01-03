@@ -207,7 +207,8 @@ namespace VRGIN.Controls
 
             Rumble = gameObject.AddComponent<RumbleManager>();
             gameObject.AddComponent<BodyRumbleHandler>();
-            gameObject.AddComponent<MenuHandlerGame>();
+            // Moved to kk plugin for more control.
+            //gameObject.AddComponent<MenuHandlerGame>();
 
             Model = new GameObject("Model").AddComponent<SteamVR_RenderModel>();
             Model.shader = VRManager.Instance.Context.Materials.StandardShader;
@@ -408,11 +409,11 @@ namespace VRGIN.Controls
 
         public enum TrackpadDirection
         {
+            Center,
             Up,
             Down,
             Left,
             Right,
-            Center,
         }
 
         public TrackpadDirection GetTrackpadDirection()

@@ -194,7 +194,7 @@ namespace VRGIN.Modes
                         var myForward = steamCam.head.forward;
 
                         VRLog.Debug("Actor #{0} -- He: {1} -> {2} | Me: {3} -> {4}", i, hisPos, hisForward, myPos, myForward);
-                        if (Vector3.Distance(hisPos, myPos) * VR.Context.UnitToMeter <  0.15f && Vector3.Dot(hisForward, myForward) > 0.6f)
+                        if (Vector3.Distance(hisPos, myPos) * VR.Context.UnitToMeter < 0.15f && Vector3.Dot(hisForward, myForward) > 0.6f)
                         {
                             actor.HasHead = false;
                         }
@@ -215,7 +215,11 @@ namespace VRGIN.Modes
 
         protected void CheckInput()
         {
-            //foreach (var shortcut in Shortcuts) shortcut.Evaluate();
+            if (Shortcuts != null)
+            {
+                foreach (var shortcut in Shortcuts)
+                    shortcut.Evaluate();
+            }
         }
 
         private void OnDeviceConnected(int idx, bool connected)

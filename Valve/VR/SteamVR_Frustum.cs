@@ -23,10 +23,10 @@ namespace Valve.VR
 
         public void UpdateModel()
         {
-            fovLeft = Mathf.Clamp(fovLeft, 1f, 89f);
-            fovRight = Mathf.Clamp(fovRight, 1f, 89f);
-            fovTop = Mathf.Clamp(fovTop, 1f, 89f);
-            fovBottom = Mathf.Clamp(fovBottom, 1f, 89f);
+            fovLeft = Mathf.Clamp(fovLeft, 1f, 179f);
+            fovRight = Mathf.Clamp(fovRight, 1f, 179f);
+            fovTop = Mathf.Clamp(fovTop, 1f, 179f);
+            fovBottom = Mathf.Clamp(fovBottom, 1f, 179f);
             farZ = Mathf.Max(farZ, nearZ + 0.01f);
             nearZ = Mathf.Clamp(nearZ, 0.01f, farZ - 0.01f);
             var num = Mathf.Sin((0f - fovLeft) * ((float)Math.PI / 180f));

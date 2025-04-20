@@ -30,7 +30,7 @@ namespace VRGIN.Helpers
 
         public IMaterialPalette Materials => _Materials;
 
-        public virtual float NearClipPlane => 0.1f;
+        public virtual float NearClipPlane => 0.01f;
 
         public virtual GUIType PreferredGUI => GUIType.uGUI;
 

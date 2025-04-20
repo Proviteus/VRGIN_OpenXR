@@ -222,12 +222,11 @@ namespace VRGIN.Core
                 TriggerPropertyChanged("RotationMultiplier");
             }
         }
-
         [XmlIgnore]
         public virtual Shortcuts Shortcuts
         {
             get => _Shortcuts;
-            protected set => _Shortcuts = value;
+            set => _Shortcuts = value;
         }
 
         [XmlIgnore]

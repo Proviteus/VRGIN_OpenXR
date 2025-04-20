@@ -108,16 +108,28 @@ namespace VRGIN.Modes
                 new MultiKeyboardShortcut(VR.Shortcuts.ImpersonateApproximately, delegate
                 {
                     if (LockTarget == null || !LockTarget.IsValid)
+                    {
+                        VRLog.Info("Tried to impersonate! A");
                         Impersonate(VR.Interpreter.FindNextActorToImpersonate(), ImpersonationMode.Approximately);
+                    }
                     else
+                    {
+                        VRLog.Info("Could not impersonate! A");
                         Impersonate(null);
+                    }
                 }),
                 new MultiKeyboardShortcut(VR.Shortcuts.ImpersonateExactly, delegate
                 {
                     if (LockTarget == null || !LockTarget.IsValid)
+                    {
+                        VRLog.Info("Tried to impersonate!");
                         Impersonate(VR.Interpreter.FindNextActorToImpersonate(), ImpersonationMode.Exactly);
+                    }
                     else
+                    {
+                        VRLog.Info("Could not impersonate!");
                         Impersonate(null);
+                    }
                 }),
                 new MultiKeyboardShortcut(VR.Shortcuts.ResetView, Recenter)
             }.Concat(base.CreateShortcuts());

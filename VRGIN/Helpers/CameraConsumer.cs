@@ -33,7 +33,7 @@ namespace VRGIN.Helpers
             if (_SoftMode)
             {
                 camera.cullingMask = 0;
-                camera.nearClipPlane = 1f;
+                camera.nearClipPlane = 0.01f;
                 camera.farClipPlane = 1f;
             }
             else

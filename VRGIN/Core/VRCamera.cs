@@ -250,10 +250,13 @@ namespace VRGIN.Core
             VRLog.Info("{0} components before the additions, {1} after", num, target.GetComponents<Component>().Length);
         }
 
-        //protected override void OnUpdate()
-        //{
-        //    if (SteamCam.origin) SteamCam.origin.localScale = Vector3.one * VR.Settings.IPDScale;
-        //}
+        protected override void OnUpdate()
+        {
+            // Force IPDScale to stay between 0.01 and 5
+            VR.Settings.IPDScale = Mathf.Clamp(VR.Settings.IPDScale, 0.01f, 5f);
+            if (SteamCam.origin) SteamCam.origin.localScale = Vector3.one * VR.Settings.IPDScale;
+        }
+
 
         public void Refresh()
         {

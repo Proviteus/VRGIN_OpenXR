@@ -68,7 +68,7 @@ namespace VRGIN.Visuals
             model.gameObject.layer = LayerMask.NameToLayer(VR.Context.InvisibleLayer);
             var camera = this.gameObject.AddComponent<Camera>();
             camera.depth = 1f;
-            camera.nearClipPlane = 0.3f;
+            camera.nearClipPlane = 0.01f;
             camera.cullingMask = 0x7FFFFFFF & ~VR.Context.UILayerMask;
             transform.position = S_Position;
             transform.rotation = S_Rotation;
